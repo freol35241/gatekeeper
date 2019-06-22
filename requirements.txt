@@ -1,0 +1,5 @@
+Flask
+pyjwt
+peewee
+bcrypt
+psycopg2-binary
