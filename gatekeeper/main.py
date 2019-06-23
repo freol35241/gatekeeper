@@ -56,7 +56,9 @@ def login():
         remember_me = request.form.get('remember-me', None) == 'on'
 
         next_page = request.args.get('next')
-        # TODO: next_page validation!
+        if next_page is not None and not request.host in next_page:
+            # Redirect is not on same domain (or any subdomain of) our current domain. Abort!
+            abort(404)
 
         # Query database for username
         query = USER.select().where(USER.username == username)
@@ -68,11 +70,9 @@ def login():
             user = query.dicts().get()
 
         # Validate password
-        expected_pass = user.pop('password')    # Removing password from dict
-        if not expected_pass == password:
-            return redirect(url_for('login', next=next_page))
-
-        # TODO: encrypted passwords!        
+        hashed_pass = user.pop('password')    # Removing password from dict
+        if not bcrypt.checkpw(password.encode(), hashed_pass.encode()):
+            return redirect(url_for('login', next=next_page))      
 
         # Construct token
         expire_in = datetime.timedelta(seconds=TOKEN_EXPIRATION_TIME)
