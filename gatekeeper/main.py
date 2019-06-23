@@ -55,6 +55,9 @@ def login():
         password = request.form['pass']
         remember_me = request.form.get('remember-me', None) == 'on'
 
+        next_page = request.args.get('next')
+        # TODO: next_page validation!
+
         # Query database for username
         query = USER.select().where(USER.username == username)
 
@@ -67,9 +70,9 @@ def login():
         # Validate password
         expected_pass = user.pop('password')    # Removing password from dict
         if not expected_pass == password:
-            return redirect(url_for('login'))
+            return redirect(url_for('login', next=next_page))
 
-        
+        # TODO: encrypted passwords!        
 
         # Construct token
         expire_in = datetime.timedelta(seconds=TOKEN_EXPIRATION_TIME)
@@ -84,15 +87,17 @@ def login():
         )
 
         # Return and set token inside cookie
-        resp = make_response(jsonify(success=True))
+        resp = redirect(next_page) if next_page is not None else make_response(jsonify(success=True))
         resp.set_cookie(COOKIE_NAME, 
                         auth_token.decode(), 
                         domain=COOKIE_DOMAIN, 
-                        max_age=expire_in.total_seconds() if remember_me else None) # Set as a session cookie if not remember me is 
+                        max_age=expire_in.total_seconds() if remember_me else None) # Set as a session cookie if remember_me is not checked
 
         return resp
 
-    return render_template('login.html', APP_NAME=APP_NAME)
+    # Fetch next parameter from query
+    action = url_for('login', next=request.args.get('next'))
+    return render_template('login.html', APP_NAME=APP_NAME, ACTION=action)
 
 @app.route('/verify')
 def verify():
