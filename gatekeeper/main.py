@@ -1,11 +1,12 @@
 import os
-import jwt
 import bcrypt
 import datetime
 from flask import (Flask, current_app, request, render_template, 
                     redirect, make_response, jsonify, abort, url_for)
 from playhouse.reflection import Introspector
 from playhouse.flask_utils import FlaskDB
+
+import utils
 
 app = Flask(__name__)
 app.secret_key = b'f)\x03\x8brQX\x0e\xe9<k\x00G#gL'
@@ -26,25 +27,6 @@ try:
 except ValueError:
     raise ValueError('Provide a valid DB_URL!')
 
-
-def create_token(dikt, expires_in):
-    """
-    Create a JSON web token with dikt as extra payload
-    """
-    now = datetime.datetime.utcnow()
-
-    mandatory_payload = {
-        'exp': now + expires_in,
-        'iat': now,
-    }
-
-    payload = {**dikt, **mandatory_payload}
-    
-    return jwt.encode(
-        payload,
-        TOKEN_SECRET,
-        algorithm='HS256'
-    )
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -77,13 +59,14 @@ def login():
         # Construct token
         expire_in = datetime.timedelta(seconds=TOKEN_EXPIRATION_TIME)
 
-        auth_token = create_token(
+        auth_token = utils.create_token(
             {
                 'username': user['username'],
                 'email': user['email'],
                 'id': user['id']
             },
-            expire_in
+            expire_in,
+            TOKEN_SECRET
         )
 
         # Return and set token inside cookie
@@ -102,25 +85,12 @@ def login():
 @app.route('/verify')
 def verify():
 
-    auth_token = request.cookies.get(COOKIE_NAME, None)
-
-    if auth_token:
-        # We have a token of some sort, try decoding it
-        try:
-            payload = jwt.decode(auth_token, TOKEN_SECRET)
-            #Token ok, return 200
-            return jsonify(success=True)
-
-        except jwt.ExpiredSignatureError:
-            # Token has expired, ask user to log in again
-            abort(401)
-
-        except jwt.InvalidTokenError:
-            # Invalid token! User must login!
-            abort(401)
-
-    # No token found. User must login!
-    abort(401)
+    if utils.verify_token(request, COOKIE_NAME, TOKEN_SECRET):
+        # Verified, return 200
+        return make_response(jsonify(success=True))
+    else:
+        # Not valid, user must login, return 401
+        abort(401)
 
 @app.route('/logout')
 def logout():
