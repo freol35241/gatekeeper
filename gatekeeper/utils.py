@@ -33,7 +33,7 @@ def verify_token(request, cookie_name, secret):
     try:
         payload = jwt.decode(auth_token, secret)
         #Token ok
-        return True
+        return payload
 
     except jwt.ExpiredSignatureError:
         # Token has expired, ask user to log in again

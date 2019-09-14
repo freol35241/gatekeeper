@@ -1,4 +1,5 @@
 import os
+import json
 import bcrypt
 import datetime
 from flask import (Flask, current_app, request, render_template, 
@@ -9,14 +10,19 @@ from playhouse.flask_utils import FlaskDB
 import utils
 
 app = Flask(__name__)
-app.secret_key = b'f)\x03\x8brQX\x0e\xe9<k\x00G#gL'
+app.secret_key = os.urandom(24)
 
 ### User defined variables
 APP_NAME = os.environ.get('GATEKEEPER_APP_NAME', 'GATEKEEPER')
+
 COOKIE_NAME = os.environ.get('GATEKEEPER_COOKIE_NAME', 'GATEKEEPER')
 COOKIE_DOMAIN = os.environ.get('GATEKEEPER_COOKIE_DOMAIN', None)
+
 TOKEN_SECRET = os.environ.get('GATEKEEPER_TOKEN_SECRET', app.config.get('SECRET_KEY'))
 TOKEN_EXPIRATION_TIME = os.environ.get('GATEKEEPER_COOKIE_EXPIRATION_TIME', 60*60*24) #Default to 24 hours
+
+HEADER_KEY = os.environ.get('GATEKEEPER_HEADER_KEY', 'GATEKEEPER')
+
 DB_URL = os.environ.get('GATEKEEPER_DB_URL', None)
 DB_TABLE = os.environ.get('GATEKEEPER_DB_TABLE', 'USERS')
 
@@ -61,8 +67,6 @@ def login():
 
         auth_token = utils.create_token(
             {
-                'username': user['username'],
-                'email': user['email'],
                 'id': user['id']
             },
             expire_in,
@@ -85,12 +89,33 @@ def login():
 @app.route('/verify')
 def verify():
 
-    if utils.verify_token(request, COOKIE_NAME, TOKEN_SECRET):
-        # Verified, return 200
-        return make_response(jsonify(success=True))
-    else:
-        # Not valid, user must login, return 401
-        abort(401)
+    result = utils.verify_token(request, COOKIE_NAME, TOKEN_SECRET)
+
+    if result:
+        # Verified, fetch user info
+        user_id = result['id']
+        query = USER.select().where(USER.id == user_id)
+        
+        if query.exists():
+            # User found, construct json header
+
+            user = query.dicts().get()
+
+            auth_header = json.dumps(
+                {
+                    'username': user['username'],
+                    'email': user['email'],
+                }
+            )
+
+            # Set header on response
+            resp = make_response(jsonify(success=True))
+            resp.headers[HEADER_KEY] = auth_header
+
+            return resp
+
+    # Not valid, user must login, return 401
+    abort(401)
 
 @app.route('/logout')
 def logout():
