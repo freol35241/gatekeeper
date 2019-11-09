@@ -23,7 +23,7 @@ TOKEN_EXPIRATION_TIME = os.environ.get('GATEKEEPER_COOKIE_EXPIRATION_TIME', 60*6
 
 HEADER_KEY = os.environ.get('GATEKEEPER_HEADER_KEY', 'GATEKEEPER')
 
-DB_URL = os.environ.get('GATEKEEPER_DB_URL', None)
+DB_URL = os.environ.get('GATEKEEPER_DB_URL', 'postgresql://postgres:postgres@192.168.0.214:25432/foltopia')
 DB_TABLE = os.environ.get('GATEKEEPER_DB_TABLE', 'USERS')
 
 try:
@@ -114,8 +114,15 @@ def verify():
 
             return resp
 
-    # Not valid, user must login, return 401
-    abort(401)
+    # Not valid, user must login, redirect to login url with correct next-page
+
+    #Where to?
+    protocol = request.headers.get('X-Forwarded-Proto')
+    host = request.headers.get('X-Forwarded-Host')
+    uri = request.headers.get('X-Forwarded-Uri')
+
+    return redirect(url_for('login', next=protocol+'://'+host+uri))
+
 
 @app.route('/logout')
 def logout():
