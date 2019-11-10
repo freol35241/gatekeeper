@@ -15,6 +15,11 @@ app.secret_key = os.urandom(24)
 ### User defined variables
 APP_NAME = os.environ.get('GATEKEEPER_APP_NAME', 'GATEKEEPER')
 
+REDIRECT_URL_ON_FAIL = os.environ.get('GATEKEEPER_REDIRECT_URL', None)
+
+if not REDIRECT_URL_ON_FAIL:
+    raise ValueError('Provide a URL for redirects!')
+
 COOKIE_NAME = os.environ.get('GATEKEEPER_COOKIE_NAME', 'GATEKEEPER')
 COOKIE_DOMAIN = os.environ.get('GATEKEEPER_COOKIE_DOMAIN', None)
 
@@ -117,11 +122,11 @@ def verify():
     # Not valid, user must login, redirect to login url with correct next-page
 
     #Where to?
-    protocol = request.headers.get('X-Forwarded-Proto')
+    print(request.headers, flush=True)
     host = request.headers.get('X-Forwarded-Host')
-    uri = request.headers.get('X-Forwarded-Uri')
+    uri = request.headers.get('X-Forwarded-Uri', '')
 
-    return redirect(url_for('login', next=protocol+'://'+host+uri))
+    return redirect(REDIRECT_URL_ON_FAIL+'?next=http://'+host+uri)
 
 
 @app.route('/logout')
