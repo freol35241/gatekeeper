@@ -15,20 +15,20 @@ app.secret_key = os.urandom(24)
 ### User defined variables
 APP_NAME = os.environ.get('GATEKEEPER_APP_NAME', 'GATEKEEPER')
 
-REDIRECT_URL_ON_FAIL = os.environ.get('GATEKEEPER_REDIRECT_URL', None)
+REDIRECT_URL_ON_FAIL = os.environ.get('GATEKEEPER_REDIRECT_URL')
 
 if not REDIRECT_URL_ON_FAIL:
     raise ValueError('Provide a URL for redirects!')
 
 COOKIE_NAME = os.environ.get('GATEKEEPER_COOKIE_NAME', 'GATEKEEPER')
-COOKIE_DOMAIN = os.environ.get('GATEKEEPER_COOKIE_DOMAIN', None)
+COOKIE_DOMAIN = os.environ.get('GATEKEEPER_COOKIE_DOMAIN')
 
 TOKEN_SECRET = os.environ.get('GATEKEEPER_TOKEN_SECRET', app.config.get('SECRET_KEY'))
 TOKEN_EXPIRATION_TIME = os.environ.get('GATEKEEPER_COOKIE_EXPIRATION_TIME', 60*60*24) #Default to 24 hours
 
 HEADER_KEY = os.environ.get('GATEKEEPER_HEADER_KEY', 'GATEKEEPER')
 
-DB_URL = os.environ.get('GATEKEEPER_DB_URL', 'postgresql://postgres:postgres@192.168.0.214:25432/foltopia')
+DB_URL = os.environ.get('GATEKEEPER_DB_URL')
 DB_TABLE = os.environ.get('GATEKEEPER_DB_TABLE', 'USERS')
 
 try:
@@ -46,7 +46,7 @@ def login():
         # Extract request data
         username = request.form['username']
         password = request.form['pass']
-        remember_me = request.form.get('remember-me', None) == 'on'
+        remember_me = request.form.get('remember-me') == 'on'
 
         next_page = request.args.get('next')
         if next_page is not None and not request.host in next_page:
